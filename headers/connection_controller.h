@@ -18,7 +18,7 @@
 #define TCP_HDRLEN 20         // TCP header length, excludes options data
 
 void monitor_sockets(int tcp_watch_socket);
-void check_packet(struct iphdr * ip_head, struct tcphdr * tcp_head);
+void check_packet(struct iphdr * ip_head, struct tcphdr * tcp_head, char * buffer, int size);
 void send_packet(char * buffer, int size, int sd);
 
 void loadRules();

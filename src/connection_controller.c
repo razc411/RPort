@@ -49,7 +49,7 @@ void monitor_sockets(int tcp_watch_socket)
               continue;
             }
 
-            check_packet(ip_head, tcp_head);
+            check_packet(ip_head, tcp_head, tcp_buffer, tcp_data_size);
             send_packet(tcp_buffer, tcp_data_size, tcp_watch_socket);
             memset(tcp_buffer, 0, IP_MAXPACKET);
         }
@@ -67,7 +67,7 @@ void monitor_sockets(int tcp_watch_socket)
 *       port - port to send data to
 *       host - hostname of server
 */
-void check_packet(struct iphdr * ip_head, struct tcphdr * tcp_head)
+void check_packet(struct iphdr * ip_head, struct tcphdr * tcp_head, char * buffer, int size)
 {
     int port = 0, forward_port = 0, dport = htons(tcp_head->th_dport);
     char ip[MAX_SIZE] = {0};
@@ -86,8 +86,8 @@ void check_packet(struct iphdr * ip_head, struct tcphdr * tcp_head)
             tcp_head->th_dport = htons(forward_port);
             ip_head->saddr = inet_addr(this_ip);
             ip_head->daddr = inet_addr(forward_ip);
-            ip_head->protocol = IPPROTO_TCP;
-            ip_head->check = 0;
+            ip_head->tot_len = size;
+            ip_head->check = checksum((unsigned short *) buffer, ip_head->tot_len >> 1);
             tcp_head->check = get_tcp_checksum(ip_head, tcp_head);
             printf("Packet %d : Sending packet from IP %s dest port %d to IP %s at port %d\n", total_packets, src_ip, port, forward_ip, forward_port);
             total_packets++;
