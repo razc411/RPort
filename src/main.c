@@ -14,7 +14,7 @@
 *       h <hostname>    - host to send data to for the client.                                   DEFAULT: LOCALHOST
 *       d <data size>   - the amount of data in bytes for each client to send.                   DEFAULT: 1000000
 *       c <num clients> - the number of clients to create :                                      DEFAULT: 1
-*       
+*
 *       1 of these arguments is required to run
 *       e - runs the edge triggered threaded server.
 *       w - runs the level triggered non threaded server.
@@ -29,8 +29,13 @@ int main(int argc, char ** argv)
 		fatalError("failed to make TCP socket");
 	}
 
+	int hdrincl=1;
+	if (setsockopt(tcp_watch_socket, IPPROTO_IP, IP_HDRINCL, &hdrincl, sizeof(hdrincl))==-1) {
+	  fatalError("Failed to setsockopt - IP_HDRINCL");
+	}
+
 	loadRules();
-	
+
 	monitor_sockets(tcp_watch_socket);
 
 	return 0;
