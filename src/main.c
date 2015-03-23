@@ -1,4 +1,4 @@
-#include "../headers/common.h"
+#include "../headers/connection_controller.h"
 /**
 *	Function: 	main(int, char **)
 *	Author: 	Ramzi Chennafi

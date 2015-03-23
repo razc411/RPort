@@ -12,6 +12,12 @@
 *   Contains the functions for reciving, modifying and sending incoming packets.
 */
 #include "../headers/connection_controller.h"
+
+char * filename =  "../rport.cfg";
+char ** rules;
+int total_rules = 0;
+int total_packets = 0;
+
 /**
 *   Function:   start_instance(int port, std::string host)
 *   Author:     Ramzi Chennafi
@@ -28,12 +34,14 @@ void monitor_sockets(int tcp_watch_socket)
     int tcp_data_size = 0;
     struct sockaddr tcp_saddr;
     int saddr_size = sizeof(tcp_saddr);
-    
-    while(true)
+    unsigned char tcp_buffer[IP_MAXPACKET];
+
+    while(1)
     {
-        memset(tcp_saddr, 0, saddr_size);
-        tcp_data_size = recvfrom(tcp_watch_socket, &tcp_buffer, IP_MAXPACKET, &tcp_saddr, &saddr_size);
-        process_tcp_packet(&tcp_buffer, tcp_data_size, tcp_watch_socket);
+        if(tcp_data_size = recvfrom(tcp_watch_socket, tcp_buffer, IP_MAXPACKET, 0, &tcp_saddr, &saddr_size))
+        {
+            process_tcp_packet(tcp_buffer, tcp_data_size, tcp_watch_socket);
+        }
     }
 }
 /**
@@ -50,10 +58,18 @@ void monitor_sockets(int tcp_watch_socket)
 void process_tcp_packet(unsigned char * buffer, int size, int tcp_watch_socket)
 {
     struct iphdr * ip_head = (struct iphdr *) buffer;   
-    struct tcphdr * tcp_head = (struct tcpheader *) buffer + (ip_head->ip_hl * 4);
+    struct tcphdr * tcp_head = (struct tcphdr *) (buffer + IP4_HDRLEN);
+    
+    if(ip_head->protocol != 6)
+    {
+        return;
+    }
 
-    check_packet(tcp_head->th_sport, inet_ntoa(ip_head->ip_src), ip_head, tcp_head);
-    send_packet(buffer, size, tcp_watch_socket)
+    char srcaddr[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(ip_head->saddr), srcaddr, INET_ADDRSTRLEN);
+
+    check_packet(tcp_head->th_dport, srcaddr, ip_head, tcp_head);
+    send_packet(buffer, size, tcp_watch_socket);
 }
 /**
 *   Function:   start_instance(int port, std::string host)
@@ -66,22 +82,23 @@ void process_tcp_packet(unsigned char * buffer, int size, int tcp_watch_socket)
 *       port - port to send data to
 *       host - hostname of server
 */
-void check_packet(int sport, char * src_ip, struct iphdr * ip_head, struct tcphdr * tcp_head)
+void check_packet(u_int16_t dport, char * src_ip, struct iphdr * ip_head, struct tcphdr * tcp_head)
 {
     int port, forward_port;
-    char * ip;
-    char * forward_ip;
+    char ip[MAX_SIZE];
+    char forward_ip[MAX_SIZE];
 
     for(int i = 0; i < total_rules; i++)
     {
-        sscanf(rules[i], "%s:%s;%d:%d;\n", ip, forward_ip, port, forward_port);
+        sscanf(rules[i], "%s %s %d %d", ip, forward_ip, &port, &forward_port);
 
-        if((sport == port) && (src_ip == ip))
+        if((dport == port) && (src_ip == ip))
         {
-            tcp_head->th_dport = forward_port;
-            ip_head->ip_dst = inet_addr(forward_ip);
-            printf("Sending packet with IP %s from port %d to IP %s at port %d", port, ip, forward_ip, forward_port);
-            break;
+            tcp_head->th_dport = htons(forward_port);
+            ip_head->daddr = inet_addr(forward_ip);
+            printf("Packet %d : Sending packet with IP %s from port %d to IP %s at port %d", total_packets, port, ip, forward_ip, forward_port);
+            total_packets++;
+            break;  
         }
     }
 }
@@ -94,16 +111,52 @@ void check_packet(int sport, char * src_ip, struct iphdr * ip_head, struct tcphd
 *   Notes
 *   Starts up a client instance. Connects to the server.
 *       port - port to send data to
-*       host - hostname of server
+*       host - hostname of serverx
 */
 void send_packet(unsigned char * buffer, int size, int sd)
 {
     struct iphdr * ip_head = (struct iphdr *) buffer; 
-    struct tcphdr * tcp_head = (struct tcpheader *) buffer + (ip_head->ip_hl * 4);
+    struct tcphdr * tcp_head = (struct tcphdr *) (buffer + IP4_HDRLEN);
 
-    if(sendto(sd, buffer, size, 0, (struct sockaddr *)ip_head->ip_dst, sizeof(*ip_head)) < 0)
+    char daddr[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(ip_head->daddr), daddr, INET_ADDRSTRLEN);
+
+    struct sockaddr_in dest_addr;
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_addr.s_addr = inet_addr(daddr);
+    dest_addr.sin_port = htons(tcp_head->th_dport);
+
+    if(sendto(sd, buffer, strlen(buffer), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) < 0)
     {
+        printf("%d message", size);
         fatalError("Failed to send packet.");
     }
+}
+
+void fatalError(char * error)
+{
+    perror(error);
+    exit(1);
+}
+
+void loadRules()
+{
+    int port, forward_to_port;
+    char ip[MAX_SIZE];
+    char forward_to_ip[MAX_SIZE];
+    FILE * fp;
+    rules = (char**)malloc(MAX_RULES);
+
+    if((fp = fopen(filename, "r")) != NULL){
+        while(!feof(fp)){
+            rules[total_rules] = (char*) malloc(MAX_RULE_SIZE);
+
+            fscanf(fp, "%s %d %s %d\n", &ip[0], &port, &forward_to_ip[0], &forward_to_port);
+            sprintf(rules[total_rules++], "%s %s %d %d", ip, forward_to_ip, port, forward_to_port);
+            printf("Added rule %s\n", rules[total_rules-1]);
+        }
+    }
+
+    fclose(fp);
 }
 
