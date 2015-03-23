@@ -20,7 +20,6 @@ int total_rules = 0;
 int total_packets = 0;
 int host_dest[MAX_RULES];
 char * this_ip = "192.168.0.10";
-int forwarder_port = 84232;
 
 /**
 *   Function:   start_instance(int port, std::string host)
@@ -44,37 +43,19 @@ void monitor_sockets(int tcp_watch_socket)
         if((tcp_data_size = recvfrom(tcp_watch_socket, tcp_buffer, IP_MAXPACKET, 0, 0, 0)) > 0)
         {
             struct iphdr * ip_head = (struct iphdr *) tcp_buffer;
-            struct tcphdr * tcp_head = (struct tcphdr *) (tcp_buffer + IP4_HDRLEN);
+            struct tcphdr * tcp_head = (struct tcphdr *) (tcp_buffer + (ip_head->ihl * 4));
             if(ip_head->protocol != IPPROTO_TCP)
             {
               continue;
             }
 
-            process_tcp_packet(tcp_buffer, tcp_watch_socket, ip_head, tcp_head);
+            check_packet(ip_head, tcp_head);
             send_packet(tcp_buffer, tcp_data_size, tcp_watch_socket);
             memset(tcp_buffer, 0, IP_MAXPACKET);
         }
     }
 }
-/**
-*   Function:   start_instance(int port, std::string host)
-*   Author:     Ramzi Chennafi
-*   Date:       Febuary 10 2015
-*   Returns:    int - the socket created for the client
-*
-*   Notes
-*   Starts up a client instance. Connects to the server.
-*       port - port to send data to
-*       host - hostname of server
-*/
-void process_tcp_packet(char * buffer, int tcp_watch_socket, struct iphdr * ip_head, struct tcphdr * tcp_head)
-{
-    char srcaddr[INET_ADDRSTRLEN], daddr[INET_ADDRSTRLEN];;
-    inet_ntop(AF_INET, &(ip_head->saddr), srcaddr, INET_ADDRSTRLEN);
-    inet_ntop(AF_INET, &(ip_head->daddr), daddr, INET_ADDRSTRLEN);
 
-    check_packet(htons(tcp_head->th_dport), htons(tcp_head->th_sport), srcaddr, daddr, ip_head, tcp_head);
-}
 /**
 *   Function:   start_instance(int port, std::string host)
 *   Author:     Ramzi Chennafi
@@ -86,11 +67,14 @@ void process_tcp_packet(char * buffer, int tcp_watch_socket, struct iphdr * ip_h
 *       port - port to send data to
 *       host - hostname of server
 */
-void check_packet(int dport, int sport, char * src_ip, char * daddr, struct iphdr * ip_head, struct tcphdr * tcp_head)
+void check_packet(struct iphdr * ip_head, struct tcphdr * tcp_head)
 {
-    int port = 0, forward_port = 0;
+    int port = 0, forward_port = 0, dport = htons(tcp_head->th_dport);
     char ip[MAX_SIZE] = {0};
     char forward_ip[MAX_SIZE] = {0};
+    char src_ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(ip_head->saddr), src_ip, INET_ADDRSTRLEN);
+
 
     for(int i = 0; i < total_rules; i++)
     {
@@ -137,7 +121,7 @@ void check_packet(int dport, int sport, char * src_ip, char * daddr, struct iphd
 void send_packet(char * buffer, int size, int sd)
 {
     struct iphdr * ip_head = (struct iphdr *) buffer;
-    struct tcphdr * tcp_head = (struct tcphdr *) (buffer + IP4_HDRLEN);
+    struct tcphdr * tcp_head = (struct tcphdr *) (buffer + (ip_head->ihl * 4));
 
     struct sockaddr_in dest_addr = {0};
     dest_addr.sin_family = AF_INET;
@@ -150,13 +134,33 @@ void send_packet(char * buffer, int size, int sd)
         fatalError("Failed to send packet.");
     }
 }
-
+/**
+*   Function:   start_instance(int port, std::string host)
+*   Author:     Ramzi Chennafi
+*   Date:       Febuary 10 2015
+*   Returns:    int - the socket created for the client
+*
+*   Notes
+*   Starts up a client instance. Connects to the server.
+*       port - port to send data to
+*       host - hostname of serverx
+*/
 void fatalError(char * error)
 {
     perror(error);
     exit(1);
 }
-
+/**
+*   Function:   start_instance(int port, std::string host)
+*   Author:     Ramzi Chennafi
+*   Date:       Febuary 10 2015
+*   Returns:    int - the socket created for the client
+*
+*   Notes
+*   Starts up a client instance. Connects to the server.
+*       port - port to send data to
+*       host - hostname of serverx
+*/
 void loadRules()
 {
     int port = 0, forward_to_port = 0;
