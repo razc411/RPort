@@ -1,7 +1,6 @@
 // thanx to http://seclists.org/lists/bugtraq/1999/Mar/0057.html
 // code retrieved from http://sysnet.ucsd.edu/~cfleizac/iptcphdr.html
 // I take no credit for this code, im just not the best at figuring the math
-
 struct tcp_pseudo /*the tcp pseudo header*/
 {
   unsigned int src_addr;

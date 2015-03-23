@@ -4,9 +4,10 @@
 *   Date:       March 15 2015
 *   Functions:
 *       void monitor_sockets(int tcp_watch_socket)
-*       void process_tcp_packet(unsigned char * buffer, int size, struct sockaddr * tcp_saddr, int tcp_watch_socket)
-*       void check_packet(int sport, char * src_ip, struct iphdr * ip_head, struct tcphdr * tcp_head)
+*       void check_packet(struct iphdr * ip_head, struct tcphdr * tcp_head, char * buffer, int size)
+*       void fatalError(char * error)
 *       void send_packet(unsigned char * buffer, int size, int sd)
+*       void loadRules()
 *
 *   Description
 *   Contains the functions for reciving, modifying and sending incoming packets.
@@ -14,27 +15,26 @@
 #include "../headers/connection_controller.h"
 #include "../headers/ipchksum.h"
 
-char * filename =  "../rport.cfg";
+char * filename =  "rport.cfg";
 char ** rules;
 int total_rules = 0;
 int total_packets = 0;
 int host_dest[MAX_RULES];
-char * this_ip = "192.168.0.10";
-
+char * this_ip;
 /**
-*   Function:   start_instance(int port, std::string host)
+*   Function:   monitor_sockets(int tcp_watch_socket)
 *   Author:     Ramzi Chennafi
-*   Date:       Febuary 10 2015
-*   Returns:    int - the socket created for the client
+*   Date:       March 15 2015
+*   Returns:    void
 *
 *   Notes
-*   Starts up a client instance. Connects to the server.
-*       port - port to send data to
-*       host - hostname of server
+*   Monitors the raw sockets for incoming tcp datagrams to be forwarded.
+*       tcp_watch_socket - raw socket to be watched
 */
-void monitor_sockets(int tcp_watch_socket)
+void monitor_sockets(int tcp_watch_socket, char * ip)
 {
     int tcp_data_size = 0;
+    this_ip = ip;
     char tcp_buffer[IP_MAXPACKET];
     memset(tcp_buffer, 0, IP_MAXPACKET);
 
@@ -55,17 +55,18 @@ void monitor_sockets(int tcp_watch_socket)
         }
     }
 }
-
 /**
-*   Function:   start_instance(int port, std::string host)
+*   Function:   check_packet(struct iphdr * ip_head, struct tcphdr * tcp_head, char * buffer, int size)
 *   Author:     Ramzi Chennafi
-*   Date:       Febuary 10 2015
-*   Returns:    int - the socket created for the client
+*   Date:       March 15 2015
+*   Returns:    void
 *
 *   Notes
-*   Starts up a client instance. Connects to the server.
-*       port - port to send data to
-*       host - hostname of server
+*   Monitors the raw sockets for incoming tcp datagrams to be forwarded.
+*       ip_head - a pointer to the ip header of the packet to check
+*       tcp_hejad - a pointer to the tcp header of the packet to check
+*       buffer - a pointer to the buffer containing the entire packet
+*       size - the size of the entire packet
 */
 void check_packet(struct iphdr * ip_head, struct tcphdr * tcp_head, char * buffer, int size)
 {
@@ -108,15 +109,16 @@ void check_packet(struct iphdr * ip_head, struct tcphdr * tcp_head, char * buffe
     }
 }
 /**
-*   Function:   start_instance(int port, std::string host)
+*   Function:   send_packet(char * buffer, int size, int sd)
 *   Author:     Ramzi Chennafi
-*   Date:       Febuary 10 2015
-*   Returns:    int - the socket created for the client
+*   Date:       March 15 2015
+*   Returns:    void
 *
 *   Notes
-*   Starts up a client instance. Connects to the server.
-*       port - port to send data to
-*       host - hostname of serverx
+*   Sends TCP data out on a raw socket.
+*       sd - the socket to send the data out on
+*       buffer - a pointer to the buffer containing the tcp packet
+*       size - the size of the tcp packet contained in the buffer
 */
 void send_packet(char * buffer, int size, int sd)
 {
@@ -135,15 +137,14 @@ void send_packet(char * buffer, int size, int sd)
     }
 }
 /**
-*   Function:   start_instance(int port, std::string host)
+*   Function:   fatalError(char * error)
 *   Author:     Ramzi Chennafi
-*   Date:       Febuary 10 2015
-*   Returns:    int - the socket created for the client
+*   Date:       March 15 2015
+*   Returns:    void
 *
 *   Notes
-*   Starts up a client instance. Connects to the server.
-*       port - port to send data to
-*       host - hostname of serverx
+*   Prints the most recent error and exits the program.
+*       error - a point to a cstring containing the additional message to be displayed with the error.
 */
 void fatalError(char * error)
 {
@@ -151,15 +152,15 @@ void fatalError(char * error)
     exit(1);
 }
 /**
-*   Function:   start_instance(int port, std::string host)
+*   Function:   loadRules()
 *   Author:     Ramzi Chennafi
-*   Date:       Febuary 10 2015
-*   Returns:    int - the socket created for the client
+*   Date:       March 15 2015
+*   Returns:    void
 *
 *   Notes
-*   Starts up a client instance. Connects to the server.
-*       port - port to send data to
-*       host - hostname of serverx
+*   Loads the forwarding rules for the program from the config file and sets up iptables to
+*   work with the program.
+*       **adds each rule from file to the rules array.
 */
 void loadRules()
 {

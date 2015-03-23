@@ -1,0 +1,23 @@
+To use this program ensure you have GCC installed (it'd be amazing if it wasnt)
+===============================================================================
+About the Program
+
+RPort is a simple, configurable port forwarder for Linux written in C. The only requirements
+for the program are a linux system and gcc as well as IPTABLES installed.
+
+To compile the program, navigate to the main directory and execute these commands in the terminal.
+	gcc src/*.c -std=gnu11 -o RPort
+
+And to execute type this command
+	./RPort <ip of the computer running it>
+
+The program will load any rules you have created and go. To restablish the rules, just restart the program.
+
+===============================================================================
+Setting up the Rules
+
+Rules are placed in the config file in this format
+	<src ip> <destination port> -> <destination ip> <destination port>
+	192.0.0.1 50 192.0.0.2 51
+There is no limit on the rules, but there will be performance losses if the rules get excessive.
+The first pair is source to be routed and the second pair is where they will be routed.

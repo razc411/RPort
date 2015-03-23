@@ -2,27 +2,24 @@
 /**
 *	Function: 	main(int, char **)
 *	Author: 	Ramzi Chennafi
-*	Date:		Feb 21 2015
+*	Date:		March 15 2015
 *	Returns:	int, error code
 *
 *	Notes
-*	Main entry loop for the program, checks for arguments and begins the program according
-*	to the arguments. Can establish 3 different types of servers (EDGE_SERVER, LEVEL_SERVER, LEVEL_SERVER_NO_THREAD)
-*   and a client. Below are the arguments, these are optional.
-*       p <port>        - port for the server to be established on or the client to send to.     DEFAULT: 5001
-*       t <num threads> - number of threads for the threaded servers to run on.                  DEFAULT: 4
-*       h <hostname>    - host to send data to for the client.                                   DEFAULT: LOCALHOST
-*       d <data size>   - the amount of data in bytes for each client to send.                   DEFAULT: 1000000
-*       c <num clients> - the number of clients to create :                                      DEFAULT: 1
+*	Main entry loop for the port forwarder. Creates a raw socket, loads the forwarding rules and monitors
+*	the created raw socket for incoming packets to forward. Takes the IP of the computer running it as a command
+*   line argument.
 *
-*       1 of these arguments is required to run
-*       e - runs the edge triggered threaded server.
-*       w - runs the level triggered non threaded server.
-*       l - runs the level triggered threaded server.
-*       C - runs the client.
+*	Reads the rport.cfg file in the main directory for determining rules.
 */
 int main(int argc, char ** argv)
 {
+	if(argc != 2)
+	{
+		printf("Requires the ip of the machine running the forwarder to proceed.\n");
+	}
+	char * ip = argv[1];
+
 	int tcp_watch_socket = socket(PF_INET, SOCK_RAW, IPPROTO_TCP);
 	if(tcp_watch_socket < 0)
 	{
@@ -36,7 +33,7 @@ int main(int argc, char ** argv)
 
 	loadRules();
 
-	monitor_sockets(tcp_watch_socket);
+	monitor_sockets(tcp_watch_socket, ip);
 
 	return 0;
 }
