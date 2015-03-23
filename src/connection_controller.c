@@ -15,11 +15,11 @@
 #include "../headers/connection_controller.h"
 #include "../headers/ipchksum.h"
 
-char * filename =  "rport.cfg";
+char * filename =  "../rport.cfg";
 char ** rules;
 int total_rules = 0;
 int total_packets = 0;
-int host_dest[MAX_RULES];
+unsigned short host_dest[MAX_RULES];
 char * this_ip;
 /**
 *   Function:   monitor_sockets(int tcp_watch_socket)
@@ -76,37 +76,36 @@ void check_packet(struct iphdr * ip_head, struct tcphdr * tcp_head, char * buffe
     char src_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(ip_head->saddr), src_ip, INET_ADDRSTRLEN);
 
-
     for(int i = 0; i < total_rules; i++)
     {
         sscanf(rules[i], "%s %s %d %d", ip, forward_ip, &port, &forward_port);
 
-        if((dport == port) && (strcmp(src_ip, ip) == 0))
+        if(dport == port)
         {
-            host_dest[i] = htons(tcp_head->th_sport);
+            host_dest[i] = tcp_head->th_sport;
             tcp_head->th_dport = htons(forward_port);
             ip_head->saddr = inet_addr(this_ip);
             ip_head->daddr = inet_addr(forward_ip);
-            ip_head->tot_len = size;
-            ip_head->check = checksum((unsigned short *) buffer, ip_head->tot_len >> 1);
-            tcp_head->check = get_tcp_checksum(ip_head, tcp_head);
+            ip_head->check = 0;
             printf("Packet %d : Sending packet from IP %s dest port %d to IP %s at port %d\n", total_packets, src_ip, port, forward_ip, forward_port);
             total_packets++;
             break;
         }
 
-        if((strcmp(src_ip, forward_ip) == 0) && (host_dest[i] == htons(tcp_head->th_dport)))
+        if((strcmp(src_ip, forward_ip) == 0))
         {
           ip_head->saddr = inet_addr(this_ip);
           ip_head->daddr = inet_addr(ip);
           ip_head->check = 0;
           tcp_head->th_sport = htons(forward_port);
-          tcp_head->check = get_tcp_checksum(ip_head, tcp_head);
-          printf("Packet %d : Sending packet with IP %s dest port %d to IP %s at port %d", total_packets, src_ip, dport, ip, dport);
+          tcp_head->th_dport = host_dest[i];
+          printf("Packet %d : Sending packet with IP %s dest port %d to IP %s at port %d\n", total_packets, src_ip, dport, ip, dport);
           total_packets++;
           break;
         }
     }
+    tcp_head->check = 0;
+    tcp_head->check = tcp_csum(ip_head, tcp_head);
 }
 /**
 *   Function:   send_packet(char * buffer, int size, int sd)
@@ -128,11 +127,10 @@ void send_packet(char * buffer, int size, int sd)
     struct sockaddr_in dest_addr = {0};
     dest_addr.sin_family = AF_INET;
     dest_addr.sin_addr.s_addr = ip_head->daddr;
-    dest_addr.sin_port = htons(tcp_head->th_dport);
+    dest_addr.sin_port = tcp_head->th_dport;
 
     if(sendto(sd, buffer, size, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) < 0)
     {
-
         fatalError("Failed to send packet.");
     }
 }
