@@ -2,22 +2,25 @@ To use this program ensure you have GCC installed (it'd be amazing if it wasnt)
 ===============================================================================
 About the Program
 
-RPort is a simple, configurable port forwarder for Linux written in C. The only requirements
-for the program are a linux system and gcc as well as IPTABLES installed.
+RPort is a simple, configurable port forwarder written in node.js.
 
-To compile the program, navigate to the main directory and execute these commands in the terminal.
-	gcc src/*.c -std=gnu11 -o RPort
+To run the program, install node - instructions on installation can be found here.
+	https://github.com/joyent/node/wiki/Installing-Node.js-via-package-manager#debian-and-ubuntu-based-linux-distributions
 
-And to execute type this command
-	./RPort <ip of the computer running it>
+On Fedora just execute the following commands as root.
+	yum install -y nodejs
 
-The program will load any rules you have created and go. To restablish the rules, just restart the program.
 
 ===============================================================================
 Setting up the Rules
 
-Rules are placed in the config file in this format
-	<src ip> <destination port> -> <destination ip> <destination port>
-	192.0.0.1 50 192.0.0.2 51
-There is no limit on the rules, but there will be performance losses if the rules get excessive.
-The first pair is source to be routed and the second pair is where they will be routed.
+Rules are placed in the config file in json format as follows:
+	[
+		{"fromPort":"7002","toPort":"88","toAddress":"localhost"}
+	]
+Seperate each new entry with a comma like so
+	[
+		{"fromPort":"7002","toPort":"88","toAddress":"localhost"},
+		{"fromPort":"7002","toPort":"88","toAddress":"localhost"}
+	]
+There is no limit on rules, but there may be a performance hit if the amount of rules get excessive.
