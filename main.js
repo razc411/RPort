@@ -1,3 +1,9 @@
+/**
+*   RPort Port Forwarder
+*   By Ramzi Chennafi
+*   A Simple port forwarder written in node js. rport.cfg is the config file 
+*   to change if you want new rules added. 
+*/
 var net = require('net');
 var configFile = "rport.cfg";
 var fs = require('fs');
