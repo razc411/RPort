@@ -10,6 +10,8 @@ To run the program, install node - instructions on installation can be found her
 On Fedora just execute the following commands as root.
 	yum install -y nodejs
 
+Execute the program by navigating to the RPort directory and typing
+	node main.js
 
 ===============================================================================
 Setting up the Rules
